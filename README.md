@@ -32,7 +32,20 @@ booklet imposition so you can:
 
 ## Installation
 
-### Option 1: Install locally
+### Option 1: Install with pipx
+
+```bash
+pipx install .
+```
+
+Then run:
+
+```bash
+zine-imposer --help
+zine --help
+```
+
+### Option 2: Install locally for development
 
 ```bash
 pip install -e .
@@ -54,7 +67,7 @@ source .venv/bin/activate
 pip install -e .
 ```
 
-### Option 2: Run without installing
+### Option 3: Run without installing
 
 ```bash
 python3 zine_imposer_cli.py --help
@@ -229,6 +242,25 @@ This ensures pages appear in the correct order after folding.
 
 - Signature splitting for larger booklets
 - Native PDF preservation without rasterization
+
+## Linux Launcher Notes
+
+A starter desktop launcher template lives at
+[packaging/linux/zine-imposer.desktop](/home/christi/Projects/Zine_CLI/packaging/linux/zine-imposer.desktop).
+
+For future Linux packaging work, the usual targets would be:
+
+- desktop file: `share/applications/zine-imposer.desktop`
+- app icon: `share/icons/hicolor/256x256/apps/zine-imposer.png`
+
+The template is already set up to launch:
+
+```bash
+zine-imposer ui
+```
+
+If you later build a Debian package or app bundle, that template and the
+bundled package icon should give you a clean starting point.
 
 ## License
 

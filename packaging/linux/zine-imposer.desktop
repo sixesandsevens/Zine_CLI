@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Zine Imposer
+Comment=Turn PDFs or images into print-ready zine layouts
+Exec=zine-imposer ui
+Icon=zine-imposer
+Terminal=false
+Categories=Graphics;Publishing;Utility;
+Keywords=zine;booklet;imposition;print;pdf;
+StartupNotify=true

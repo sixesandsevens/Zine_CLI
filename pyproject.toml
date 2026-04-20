@@ -35,9 +35,15 @@ Issues = "https://github.com/sixesandsevens/Zine-Imposer/issues"
 
 
 [project.scripts]
-zine-imposer = "zine_imposer_cli:main"
-zine = "zine_imposer_cli:main"
+zine-imposer = "zine_imposer.cli:main"
+zine = "zine_imposer.cli:main"
 
 
 [tool.setuptools]
-py-modules = ["zine_imposer_cli"]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+zine_imposer = ["assets/*.png"]
