@@ -5,8 +5,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zine-imposer"
-version = "0.1.0"
-description = "A small CLI tool for booklet and zine imposition from PDFs or images"
+version = "0.1.1"
+description = "Turn PDFs or images into print-ready zine and booklet layouts from the command line"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -29,9 +29,14 @@ classifiers = [
   "Topic :: Utilities"
 ]
 
+[project.urls]
+Homepage = "https://github.com/sixesandsevens/Zine-Imposer"
+Issues = "https://github.com/sixesandsevens/Zine-Imposer/issues"
+
 
 [project.scripts]
 zine-imposer = "zine_imposer_cli:main"
+zine = "zine_imposer_cli:main"
 
 
 [tool.setuptools]

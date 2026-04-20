@@ -42,6 +42,7 @@ Then run:
 
 ```bash
 zine-imposer --help
+zine --help
 ```
 
 If editable install is awkward on your system, using a virtual environment is
@@ -78,6 +79,14 @@ sudo apt install python3-tk
 
 ```bash
 zine-imposer impose \
+  --pdf "input.pdf" \
+  --output "output_zine.pdf"
+```
+
+Shortcut:
+
+```bash
+zine impose \
   --pdf "input.pdf" \
   --output "output_zine.pdf"
 ```
