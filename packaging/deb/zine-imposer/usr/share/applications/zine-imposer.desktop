@@ -2,10 +2,10 @@
 Version=1.0
 Type=Application
 Name=Zine Imposer
-Comment=Turn PDFs or images into print-ready zine layouts
+Comment=Turn PDFs and images into print-ready zines
 Exec=zine-imposer ui
 Icon=zine-imposer
 Terminal=false
-Categories=Graphics;Office;
-Keywords=zine;booklet;imposition;print;pdf;
+Categories=Graphics;Publishing;Utility;
+Keywords=zine;booklet;pdf;print;
 StartupNotify=true

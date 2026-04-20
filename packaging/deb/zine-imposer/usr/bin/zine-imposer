@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export PYTHONPATH="/usr/lib/zine-imposer/src${PYTHONPATH:+:${PYTHONPATH}}"
+exec python3 -m zine_imposer "$@"

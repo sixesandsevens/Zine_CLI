@@ -262,6 +262,37 @@ zine-imposer ui
 If you later build a Debian package or app bundle, that template and the
 bundled package icon should give you a clean starting point.
 
+## Debian Package Notes
+
+A starter Debian package layout lives under
+[packaging/deb](/home/christi/Projects/Zine_CLI/packaging/deb).
+
+To build a local `.deb` from the current source tree:
+
+```bash
+./packaging/deb/build-deb.sh
+```
+
+That produces a package like:
+
+```bash
+packaging/deb/dist/zine-imposer_0.1.1_all.deb
+```
+
+Install it with:
+
+```bash
+sudo apt install ./packaging/deb/dist/zine-imposer_0.1.1_all.deb
+```
+
+The Debian package includes:
+
+- `/usr/bin/zine-imposer`
+- `/usr/bin/zine`
+- the desktop launcher
+- the 256px app icon
+- the bundled Python package under `/usr/lib/zine-imposer/src`
+
 ## License
 
 MIT
