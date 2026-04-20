@@ -1,44 +1,84 @@
-# zine-imposer
+# Zine Imposer
 
-`zine-imposer` is a small CLI for turning a normal PDF or a stack of page images
-into print-ready booklet/zine sheets.
+> Turn your PDF into a printable zine in one command.
 
-It pads page counts to a multiple of 4, rearranges pages into booklet order, and
-exports an imposed PDF you can print duplex and fold into a tiny pamphlet.
+A small CLI tool for converting PDFs or images into print-ready zine / booklet
+layout.
+
+Takes your pages in normal reading order and rearranges them into proper
+booklet imposition so you can:
+
+- Print double-sided
+- Fold in half
+- Staple
+- Done
+
+---
 
 ## Features
 
-- Accepts a source PDF or a list of images in reading order
-- Pads short page counts with blanks automatically
-- Outputs imposed PDF pages in booklet/zine order
-- Supports `letter` and `a4`
-- Includes a `plan` command to preview the page layout before rendering
-- Can export PNG previews of each imposed sheet side
+- Accepts PDF or image input
+- Automatically pads page count to multiples of 4
+- Outputs print-ready imposed PDF
+- Supports Letter and A4
+- Optional page numbering overlay
+- Optional preview image export
+- Optional crop marks and fold guide
+- Terminal dry-run planning
+- Desktop preview UI
+- Simple CLI interface
 
-## Install
+---
+
+## Installation
+
+### Option 1: Install locally
 
 ```bash
 pip install -e .
 ```
 
-After that, you can run:
+Then run:
 
 ```bash
 zine-imposer --help
 ```
 
-## Requirements
+If editable install is awkward on your system, using a virtual environment is
+the smoothest path:
 
-- Python 3.10+
-- Pillow
-- PyMuPDF
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+```
 
-They are installed automatically through `pyproject.toml` when you use
-`pip install -e .`.
+### Option 2: Run without installing
+
+```bash
+python3 zine_imposer_cli.py --help
+```
 
 ## Usage
 
-### Preview imposition order
+### 1. Impose a PDF
+
+```bash
+zine-imposer impose \
+  --pdf "input.pdf" \
+  --output "output_zine.pdf"
+```
+
+### 2. Impose images
+
+```bash
+zine-imposer impose \
+  --images page1.png page2.png page3.png page4.png \
+           page5.png page6.png page7.png page8.png \
+  --output "output_zine.pdf"
+```
+
+### 3. Preview imposition layout
 
 ```bash
 zine-imposer plan --pages 8
@@ -47,8 +87,6 @@ zine-imposer plan --pages 8
 Example output:
 
 ```text
-Source pages: 8
-
 Sheet 1 front: 8 | 1
 Sheet 1 back : 2 | 7
 
@@ -56,93 +94,117 @@ Sheet 2 front: 6 | 3
 Sheet 2 back : 4 | 5
 ```
 
-If the source page count is not divisible by 4, blank pages are added
-automatically:
-
-```bash
-zine-imposer plan --pages 10
-```
-
-### Impose a PDF
+### 4. Dry-run a real file before export
 
 ```bash
 zine-imposer impose \
-  --pdf "CoopAndDagger.pdf" \
-  --output "CoopAndDagger_zine.pdf"
+  --pdf input.pdf \
+  --dry-run
 ```
 
-### Impose images
+This prints the exact imposed sheet order without writing the final PDF.
+
+### 5. Open the desktop preview UI
+
+```bash
+zine-imposer ui
+```
+
+The UI lets you:
+
+- choose a PDF or image set
+- tweak layout settings
+- preview each imposed sheet side in a window
+- export the imposed PDF after the dry run looks right
+
+### 6. Generate preview images
 
 ```bash
 zine-imposer impose \
-  --images cover.png p2.png p3.png p4.png p5.png p6.png p7.png p8.png \
-  --output "CoopAndDagger_zine.pdf"
-```
-
-### Add slot labels and preview PNGs
-
-```bash
-zine-imposer impose \
-  --pdf "CoopAndDagger.pdf" \
-  --output "CoopAndDagger_zine.pdf" \
+  --pdf input.pdf \
+  --output output.pdf \
   --preview-dir previews \
   --page-labels
 ```
 
-### Use A4 output
+### 7. Add crop marks and a fold guide
 
 ```bash
 zine-imposer impose \
-  --pdf "CoopAndDagger.pdf" \
-  --output "CoopAndDagger_zine_a4.pdf" \
-  --paper a4
+  --pdf input.pdf \
+  --output output.pdf \
+  --crop-marks \
+  --fold-guide
 ```
 
-## Commands
+## Options
 
-### `plan`
+| Option | Description |
+| --- | --- |
+| `--paper` | `letter` (default) or `a4` |
+| `--dpi` | Output DPI, default `300` |
+| `--margin` | Outer margin in pixels |
+| `--gutter` | Space between pages |
+| `--bg` | Background color |
+| `--page-labels` | Show page numbers on imposed sheets |
+| `--preview-dir` | Export PNG previews |
+| `--crop-marks` | Draw crop marks near the outer corners |
+| `--fold-guide` | Draw a dashed line at the center fold |
+| `--dry-run` | Print the imposition plan without writing the PDF |
 
-Preview booklet order for a source page count:
+## Printing Instructions
 
-```bash
-zine-imposer plan --pages 12
-```
-
-### `impose`
-
-Create the imposed output PDF:
-
-```bash
-zine-imposer impose --pdf input.pdf --output output.pdf
-```
-
-or:
-
-```bash
-zine-imposer impose --images page1.png page2.png page3.png page4.png --output output.pdf
-```
-
-## Common options
-
-- `--paper letter|a4`
-- `--dpi 300`
-- `--margin 60`
-- `--gutter 30`
-- `--bg white`
-- `--page-labels`
-- `--preview-dir previews`
-
-## Print Notes
+To assemble your zine correctly:
 
 - Print double-sided
 - Flip on short edge
 - Print at 100% scale
 
+Then:
+
+- Stack pages
+- Fold in half
+- Staple along fold
+
+If you enabled guides:
+
+- Use crop marks as trim references
+- Use the dashed center line as the fold guide
+
+## How It Works
+
+The tool rearranges pages into booklet order.
+
+Example for 8 pages:
+
+```text
+Sheet 1 front: 8 | 1
+Sheet 1 back : 2 | 7
+Sheet 2 front: 6 | 3
+Sheet 2 back : 4 | 5
+```
+
+This ensures pages appear in the correct order after folding.
+
 ## Notes
 
-The tool rasterizes PDF pages before composing the final output PDF. That keeps
-the workflow simple and reliable, though it means source vector text will not be
-preserved as vector content in the output.
+- PDF input is rasterized into images for consistent layout
+- Output is optimized for printing, not editing
+- Page count is padded automatically with blanks if needed
+- Crop marks and fold guide are optional so clean output stays available
+- The desktop UI uses the same layout engine as the CLI dry run and export
 
-For illustrated zines and weird little pamphlets, that is usually perfectly
-fine.
+## Future Ideas
+
+- Signature splitting for larger booklets
+- Native PDF preservation without rasterization
+
+## License
+
+MIT
+
+## Why?
+
+Because sometimes you need to turn a weird idea into a physical object.
+
+Like a chicken-themed tabletop RPG.
