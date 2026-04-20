@@ -36,6 +36,12 @@ try:
 except ModuleNotFoundError:
     tk = filedialog = messagebox = ttk = None  # type: ignore[assignment]
 
+try:
+    from tkinterdnd2 import DND_FILES, TkinterDnD
+except ModuleNotFoundError:
+    DND_FILES = None  # type: ignore[assignment]
+    TkinterDnD = None  # type: ignore[assignment]
+
 
 DEFAULT_DPI = 300
 CROP_MARK_LENGTH = 24
@@ -586,7 +592,10 @@ class ZineImposerUI:
             raise CliError("Pillow ImageTk support is required for the desktop UI.")
 
         try:
-            self.root = tk.Tk()
+            if TkinterDnD is not None:
+                self.root = TkinterDnD.Tk()
+            else:
+                self.root = tk.Tk()
         except tk.TclError as exc:
             raise CliError(f"Unable to open the desktop UI: {exc}") from exc
 
@@ -617,8 +626,10 @@ class ZineImposerUI:
         self.source_var = tk.StringVar(value=self.describe_source())
         self.status_var = tk.StringVar(value="Choose a PDF or image set, then preview the layout.")
         self.sheet_counter_var = tk.StringVar(value="No preview loaded")
+        self.drag_drop_var = tk.StringVar(value=self.drag_drop_message())
 
         self.build_ui()
+        self.enable_drag_and_drop()
         if self.pdf_path or self.image_paths:
             self.refresh_preview()
 
@@ -673,6 +684,11 @@ class ZineImposerUI:
             return f"{len(self.image_paths)} images selected"
         return "No source selected"
 
+    def drag_drop_message(self) -> str:
+        if DND_FILES is None or TkinterDnD is None:
+            return "Drag and drop is available when tkinterdnd2 is installed."
+        return "Drop a PDF or page images here to load them."
+
     def build_ui(self) -> None:
         self.root.columnconfigure(1, weight=1)
         self.root.rowconfigure(0, weight=1)
@@ -691,21 +707,37 @@ class ZineImposerUI:
         ttk.Button(controls, text="Choose Images", command=self.choose_images, style="Dark.TButton").grid(row=2, column=1, sticky="ew", padx=(8, 0), pady=2)
         ttk.Button(controls, text="Clear Source", command=self.clear_source, style="Dark.TButton").grid(row=3, column=0, columnspan=2, sticky="ew", pady=(2, 12))
 
-        ttk.Label(controls, text="Layout", style="Title.TLabel").grid(row=4, column=0, columnspan=2, sticky="w")
-        self.add_labeled_entry(controls, "Paper", self.paper_var, 5, combo_values=["letter", "a4"])
-        self.add_labeled_entry(controls, "DPI", self.dpi_var, 6)
-        self.add_labeled_entry(controls, "Margin", self.margin_var, 7)
-        self.add_labeled_entry(controls, "Gutter", self.gutter_var, 8)
-        self.add_labeled_entry(controls, "Background", self.bg_var, 9)
+        self.drop_zone = tk.Label(
+            controls,
+            textvariable=self.drag_drop_var,
+            justify="center",
+            bg=UI_COLORS["input_bg"],
+            fg=UI_COLORS["muted"],
+            relief="solid",
+            bd=1,
+            highlightthickness=1,
+            highlightbackground=UI_COLORS["border"],
+            padx=12,
+            pady=12,
+            wraplength=260,
+        )
+        self.drop_zone.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(0, 12))
 
-        ttk.Checkbutton(controls, text="Page labels", variable=self.page_labels_var, style="Dark.TCheckbutton").grid(row=10, column=0, columnspan=2, sticky="w", pady=(8, 0))
-        ttk.Checkbutton(controls, text="Crop marks", variable=self.crop_marks_var, style="Dark.TCheckbutton").grid(row=11, column=0, columnspan=2, sticky="w")
-        ttk.Checkbutton(controls, text="Fold guide", variable=self.fold_guide_var, style="Dark.TCheckbutton").grid(row=12, column=0, columnspan=2, sticky="w", pady=(0, 10))
+        ttk.Label(controls, text="Layout", style="Title.TLabel").grid(row=5, column=0, columnspan=2, sticky="w")
+        self.add_labeled_entry(controls, "Paper", self.paper_var, 6, combo_values=["letter", "a4"])
+        self.add_labeled_entry(controls, "DPI", self.dpi_var, 7)
+        self.add_labeled_entry(controls, "Margin", self.margin_var, 8)
+        self.add_labeled_entry(controls, "Gutter", self.gutter_var, 9)
+        self.add_labeled_entry(controls, "Background", self.bg_var, 10)
 
-        ttk.Button(controls, text="Preview Dry Run", command=self.refresh_preview, style="Accent.TButton").grid(row=13, column=0, columnspan=2, sticky="ew", pady=2)
-        ttk.Button(controls, text="Export PDF", command=self.export_pdf, style="Dark.TButton").grid(row=14, column=0, columnspan=2, sticky="ew", pady=2)
+        ttk.Checkbutton(controls, text="Page labels", variable=self.page_labels_var, style="Dark.TCheckbutton").grid(row=11, column=0, columnspan=2, sticky="w", pady=(8, 0))
+        ttk.Checkbutton(controls, text="Crop marks", variable=self.crop_marks_var, style="Dark.TCheckbutton").grid(row=12, column=0, columnspan=2, sticky="w")
+        ttk.Checkbutton(controls, text="Fold guide", variable=self.fold_guide_var, style="Dark.TCheckbutton").grid(row=13, column=0, columnspan=2, sticky="w", pady=(0, 10))
 
-        ttk.Label(controls, text="Plan", style="Title.TLabel").grid(row=15, column=0, columnspan=2, sticky="w", pady=(12, 4))
+        ttk.Button(controls, text="Preview Dry Run", command=self.refresh_preview, style="Accent.TButton").grid(row=14, column=0, columnspan=2, sticky="ew", pady=2)
+        ttk.Button(controls, text="Export PDF", command=self.export_pdf, style="Dark.TButton").grid(row=15, column=0, columnspan=2, sticky="ew", pady=2)
+
+        ttk.Label(controls, text="Plan", style="Title.TLabel").grid(row=16, column=0, columnspan=2, sticky="w", pady=(12, 4))
         self.plan_text = tk.Text(
             controls,
             width=36,
@@ -722,8 +754,8 @@ class ZineImposerUI:
             padx=10,
             pady=10,
         )
-        self.plan_text.grid(row=16, column=0, columnspan=2, sticky="nsew")
-        controls.rowconfigure(16, weight=1)
+        self.plan_text.grid(row=17, column=0, columnspan=2, sticky="nsew")
+        controls.rowconfigure(17, weight=1)
         controls.columnconfigure(0, weight=1)
         controls.columnconfigure(1, weight=1)
 
@@ -817,10 +849,7 @@ class ZineImposerUI:
         selected = filedialog.askopenfilename(title="Choose PDF", filetypes=[("PDF files", "*.pdf"), ("All files", "*.*")])
         if not selected:
             return
-        self.pdf_path = Path(selected)
-        self.image_paths = []
-        self.source_var.set(self.describe_source())
-        self.status_var.set("PDF selected. Click Preview Dry Run to render sheet previews.")
+        self.load_dropped_paths([Path(selected)])
 
     def choose_images(self) -> None:
         selected = filedialog.askopenfilenames(
@@ -829,10 +858,7 @@ class ZineImposerUI:
         )
         if not selected:
             return
-        self.image_paths = [Path(path) for path in selected]
-        self.pdf_path = None
-        self.source_var.set(self.describe_source())
-        self.status_var.set("Images selected. Click Preview Dry Run to render sheet previews.")
+        self.load_dropped_paths([Path(path) for path in selected])
 
     def clear_source(self) -> None:
         self.pdf_path = None
@@ -849,6 +875,55 @@ class ZineImposerUI:
         self.source_var.set(self.describe_source())
         self.status_var.set("Choose a PDF or image set, then preview the layout.")
         self.rebuild_thumbnail_strip()
+
+    def enable_drag_and_drop(self) -> None:
+        if DND_FILES is None or TkinterDnD is None:
+            return
+        widgets = [self.root, self.drop_zone, self.preview_pair_frame]
+        for widget in widgets:
+            try:
+                widget.drop_target_register(DND_FILES)
+                widget.dnd_bind("<<Drop>>", self.handle_drop_event)
+            except Exception:
+                continue
+
+    def handle_drop_event(self, event) -> str:
+        try:
+            raw_paths = self.root.tk.splitlist(event.data)
+            paths = [Path(path) for path in raw_paths if path]
+            self.load_dropped_paths(paths)
+            return "break"
+        except CliError as exc:
+            messagebox.showerror("Drop Error", str(exc))
+            return "break"
+
+    def load_dropped_paths(self, paths: Sequence[Path]) -> None:
+        if not paths:
+            raise CliError("No files were dropped.")
+
+        existing = [path.expanduser() for path in paths if path.expanduser().exists()]
+        if not existing:
+            raise CliError("Dropped files could not be found.")
+
+        pdfs = [path for path in existing if path.suffix.lower() == ".pdf"]
+        images = [path for path in existing if path.suffix.lower() in {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".webp", ".bmp"}]
+
+        if pdfs and images:
+            raise CliError("Drop either one PDF or a list of images, not both together.")
+        if len(pdfs) > 1:
+            raise CliError("Drop a single PDF at a time.")
+        if pdfs:
+            self.pdf_path = pdfs[0]
+            self.image_paths = []
+            self.status_var.set("PDF loaded. Click Preview Dry Run to render sheet previews.")
+        elif images:
+            self.image_paths = list(images)
+            self.pdf_path = None
+            self.status_var.set(f"{len(images)} images loaded. Click Preview Dry Run to render sheet previews.")
+        else:
+            raise CliError("Supported drops are one PDF or one or more images.")
+
+        self.source_var.set(self.describe_source())
 
     def options_from_ui(self) -> ImpositionOptions:
         try:

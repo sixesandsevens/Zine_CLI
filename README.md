@@ -26,6 +26,7 @@ booklet imposition so you can:
 - Optional crop marks and fold guide
 - Terminal dry-run planning
 - Desktop preview UI
+- Drag-and-drop file loading when Tk DnD support is available
 - Simple CLI interface
 
 ---
@@ -79,6 +80,7 @@ The desktop UI needs:
 
 - `python3-tk`
 - Pillow with `ImageTk` support
+- `tkinterdnd2` for drag-and-drop support in pip/pipx installs
 
 On Pop!_OS / Ubuntu, install Tkinter with:
 
@@ -148,6 +150,7 @@ zine-imposer ui
 The UI lets you:
 
 - choose a PDF or image set
+- drag and drop a PDF or page images into the app when drag-and-drop support is available
 - tweak layout settings
 - preview each physical sheet as front/back together
 - jump directly between sheet sides with the thumbnail strip
