@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "zine-imposer"
+version = "0.1.0"
+description = "A small CLI tool for booklet and zine imposition from PDFs or images"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+  { name = "Chris" }
+]
+dependencies = [
+  "Pillow>=10.0.0",
+  "PyMuPDF>=1.24.0"
+]
+keywords = ["zine", "booklet", "imposition", "pdf", "cli", "printing"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Environment :: Console",
+  "Topic :: Multimedia :: Graphics",
+  "Topic :: Office/Business :: Printing",
+  "Topic :: Utilities"
+]
+
+
+[project.scripts]
+zine-imposer = "zine_imposer_cli:main"
+
+
+[tool.setuptools]
+py-modules = ["zine_imposer_cli"]
