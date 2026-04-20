@@ -127,7 +127,7 @@ The UI lets you:
 
 - choose a PDF or image set
 - tweak layout settings
-- preview each imposed sheet side in a window
+- preview each physical sheet as front/back together
 - jump directly between sheet sides with the thumbnail strip
 - export the imposed PDF after the dry run looks right
 

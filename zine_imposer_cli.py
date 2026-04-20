@@ -42,6 +42,7 @@ CROP_MARK_OFFSET = 10
 FOLD_GUIDE_DASH = (10, 8)
 PREVIEW_MAX_SIZE = (900, 650)
 THUMBNAIL_SIZE = (168, 118)
+PAIR_PREVIEW_SIZE = (430, 560)
 UI_COLORS = {
     "bg": "#11161d",
     "panel": "#18212b",
@@ -579,6 +580,7 @@ class ZineImposerUI:
         self.result: Optional[ImpositionResult] = None
         self.preview_index = 0
         self.preview_photo = None
+        self.preview_pair_photos: List["ImageTk.PhotoImage"] = []
         self.thumbnail_photos: List["ImageTk.PhotoImage"] = []
         self.thumbnail_buttons: List["tk.Button"] = []
 
@@ -692,16 +694,33 @@ class ZineImposerUI:
         controls.columnconfigure(1, weight=1)
 
         ttk.Label(preview, text="Preview", style="PreviewTitle.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 8))
-        self.preview_label = tk.Label(
-            preview,
-            anchor="center",
-            bg=UI_COLORS["preview_bg"],
-            bd=1,
-            relief="solid",
-            highlightthickness=1,
-            highlightbackground=UI_COLORS["border"],
-        )
-        self.preview_label.grid(row=1, column=0, sticky="nsew")
+        self.preview_pair_frame = tk.Frame(preview, bg=UI_COLORS["panel_alt"])
+        self.preview_pair_frame.grid(row=1, column=0, sticky="nsew")
+        self.preview_pair_frame.columnconfigure(0, weight=1)
+        self.preview_pair_frame.columnconfigure(1, weight=1)
+        self.preview_pair_frame.rowconfigure(1, weight=1)
+
+        self.preview_face_labels = []
+        self.preview_caption_vars = []
+        for index, title in enumerate(("Front", "Back")):
+            caption_var = tk.StringVar(value=title)
+            self.preview_caption_vars.append(caption_var)
+            ttk.Label(
+                self.preview_pair_frame,
+                textvariable=caption_var,
+                style="PreviewTitle.TLabel",
+            ).grid(row=0, column=index, sticky="w", padx=(0 if index == 0 else 12, 0), pady=(0, 6))
+            label = tk.Label(
+                self.preview_pair_frame,
+                anchor="center",
+                bg=UI_COLORS["preview_bg"],
+                bd=1,
+                relief="solid",
+                highlightthickness=1,
+                highlightbackground=UI_COLORS["border"],
+            )
+            label.grid(row=1, column=index, sticky="nsew", padx=(0 if index == 0 else 12, 0))
+            self.preview_face_labels.append(label)
 
         nav = ttk.Frame(preview, style="Preview.TFrame")
         nav.grid(row=2, column=0, sticky="ew", pady=(10, 4))
@@ -786,7 +805,11 @@ class ZineImposerUI:
         self.image_paths = []
         self.result = None
         self.preview_index = 0
-        self.preview_label.configure(image="", text="")
+        self.preview_pair_photos = []
+        for label in self.preview_face_labels:
+            label.configure(image="", text="")
+        self.preview_caption_vars[0].set("Front")
+        self.preview_caption_vars[1].set("Back")
         self.plan_text.delete("1.0", tk.END)
         self.sheet_counter_var.set("No preview loaded")
         self.source_var.set(self.describe_source())
@@ -838,17 +861,39 @@ class ZineImposerUI:
 
     def update_preview_image(self) -> None:
         if self.result is None or not self.result.sheets:
-            self.preview_label.configure(image="", text="")
+            self.preview_pair_photos = []
+            for label in self.preview_face_labels:
+                label.configure(image="", text="")
+            self.preview_caption_vars[0].set("Front")
+            self.preview_caption_vars[1].set("Back")
             self.sheet_counter_var.set("No preview loaded")
             self.highlight_active_thumbnail()
             return
-        sheet = self.result.sheets[self.preview_index]
-        preview = render_preview_image(sheet, PREVIEW_MAX_SIZE)
-        self.preview_photo = ImageTk.PhotoImage(preview)
-        self.preview_label.configure(image=self.preview_photo)
-        self.sheet_counter_var.set(f"Sheet side {self.preview_index + 1} of {len(self.result.sheets)}")
+
+        pair_start = self.current_sheet_start_index()
+        sheet_number = (pair_start // 2) + 1
+        total_sheets = (len(self.result.sheets) + 1) // 2
+        self.preview_pair_photos = []
+
+        for offset, label in enumerate(self.preview_face_labels):
+            side_index = pair_start + offset
+            if side_index < len(self.result.sheets):
+                side_name = "Front" if offset == 0 else "Back"
+                preview = render_preview_image(self.result.sheets[side_index], PAIR_PREVIEW_SIZE)
+                photo = ImageTk.PhotoImage(preview)
+                self.preview_pair_photos.append(photo)
+                label.configure(image=photo, text="")
+                self.preview_caption_vars[offset].set(f"{side_name} · side {side_index + 1}")
+            else:
+                label.configure(image="", text="")
+                self.preview_caption_vars[offset].set("Back")
+
+        self.sheet_counter_var.set(f"Sheet {sheet_number} of {total_sheets}")
         self.highlight_active_thumbnail()
         self.scroll_active_thumbnail_into_view()
+
+    def current_sheet_start_index(self) -> int:
+        return max((self.preview_index // 2) * 2, 0)
 
     def rebuild_thumbnail_strip(self) -> None:
         for child in self.thumbnail_frame.winfo_children():
@@ -902,8 +947,9 @@ class ZineImposerUI:
         self.thumbnail_canvas.xview_moveto(0)
 
     def highlight_active_thumbnail(self) -> None:
+        pair_start = self.current_sheet_start_index()
         for index, button in enumerate(self.thumbnail_buttons):
-            is_active = index == self.preview_index and self.result is not None
+            is_active = pair_start <= index <= pair_start + 1 and self.result is not None
             button.configure(
                 bg=UI_COLORS["input_bg"] if is_active else UI_COLORS["panel_alt"],
                 highlightbackground=UI_COLORS["accent"] if is_active else UI_COLORS["border"],
@@ -912,14 +958,14 @@ class ZineImposerUI:
     def show_sheet(self, index: int) -> None:
         if self.result is None or not self.result.sheets:
             return
-        self.preview_index = index
+        self.preview_index = (index // 2) * 2
         self.update_preview_image()
 
     def scroll_active_thumbnail_into_view(self) -> None:
         if not self.thumbnail_buttons:
             return
         self.root.update_idletasks()
-        active = self.thumbnail_buttons[self.preview_index]
+        active = self.thumbnail_buttons[self.current_sheet_start_index()]
         canvas_width = max(self.thumbnail_canvas.winfo_width(), 1)
         frame_width = max(self.thumbnail_frame.winfo_width(), 1)
         active_left = active.winfo_x()
@@ -942,13 +988,13 @@ class ZineImposerUI:
     def show_previous_sheet(self) -> None:
         if self.result is None or not self.result.sheets:
             return
-        self.preview_index = (self.preview_index - 1) % len(self.result.sheets)
+        self.preview_index = (self.current_sheet_start_index() - 2) % len(self.result.sheets)
         self.update_preview_image()
 
     def show_next_sheet(self) -> None:
         if self.result is None or not self.result.sheets:
             return
-        self.preview_index = (self.preview_index + 1) % len(self.result.sheets)
+        self.preview_index = (self.current_sheet_start_index() + 2) % len(self.result.sheets)
         self.update_preview_image()
 
     def export_pdf(self) -> None:
