@@ -59,6 +59,19 @@ pip install -e .
 python3 zine_imposer_cli.py --help
 ```
 
+### UI note
+
+The desktop UI needs:
+
+- `python3-tk`
+- Pillow with `ImageTk` support
+
+On Pop!_OS / Ubuntu, install Tkinter with:
+
+```bash
+sudo apt install python3-tk
+```
+
 ## Usage
 
 ### 1. Impose a PDF
@@ -98,7 +111,7 @@ Sheet 2 back : 4 | 5
 
 ```bash
 zine-imposer impose \
-  --pdf input.pdf \
+  --pdf "input.pdf" \
   --dry-run
 ```
 
@@ -115,14 +128,15 @@ The UI lets you:
 - choose a PDF or image set
 - tweak layout settings
 - preview each imposed sheet side in a window
+- jump directly between sheet sides with the thumbnail strip
 - export the imposed PDF after the dry run looks right
 
 ### 6. Generate preview images
 
 ```bash
 zine-imposer impose \
-  --pdf input.pdf \
-  --output output.pdf \
+  --pdf "input.pdf" \
+  --output "output.pdf" \
   --preview-dir previews \
   --page-labels
 ```
@@ -131,10 +145,18 @@ zine-imposer impose \
 
 ```bash
 zine-imposer impose \
-  --pdf input.pdf \
-  --output output.pdf \
+  --pdf "input.pdf" \
+  --output "output.pdf" \
   --crop-marks \
   --fold-guide
+```
+
+If your path contains spaces or `&`, quote the whole path:
+
+```bash
+zine-imposer impose \
+  --pdf "/home/christi/Desktop/Coop&Dagger/Coop&Dagger.pdf" \
+  --dry-run
 ```
 
 ## Options

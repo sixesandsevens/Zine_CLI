@@ -41,6 +41,7 @@ CROP_MARK_LENGTH = 24
 CROP_MARK_OFFSET = 10
 FOLD_GUIDE_DASH = (10, 8)
 PREVIEW_MAX_SIZE = (900, 650)
+THUMBNAIL_SIZE = (168, 118)
 UI_COLORS = {
     "bg": "#11161d",
     "panel": "#18212b",
@@ -467,7 +468,6 @@ def render_preview_image(sheet: "Image.Image", max_size: Tuple[int, int]) -> "Im
 def save_previews(preview_dir: Path, sheets: Sequence["Image.Image"]) -> None:
     preview_dir.mkdir(parents=True, exist_ok=True)
     for index, sheet in enumerate(sheets, start=1):
-        (preview_dir / f"sheet_{index:02d}.png").write_bytes(b"")
         sheet.save(preview_dir / f"sheet_{index:02d}.png", format="PNG")
 
 
@@ -579,6 +579,8 @@ class ZineImposerUI:
         self.result: Optional[ImpositionResult] = None
         self.preview_index = 0
         self.preview_photo = None
+        self.thumbnail_photos: List["ImageTk.PhotoImage"] = []
+        self.thumbnail_buttons: List["tk.Button"] = []
 
         self.paper_var = tk.StringVar(value=args.paper)
         self.dpi_var = tk.StringVar(value=str(args.dpi))
@@ -709,6 +711,40 @@ class ZineImposerUI:
         ttk.Button(nav, text="Next", command=self.show_next_sheet, style="Dark.TButton").grid(row=0, column=2, padx=(8, 0))
         ttk.Label(preview, textvariable=self.status_var, wraplength=780, style="Muted.TLabel").grid(row=3, column=0, sticky="w", pady=(6, 0))
 
+        thumbs_title = ttk.Label(preview, text="Sheet Strip", style="PreviewTitle.TLabel")
+        thumbs_title.grid(row=4, column=0, sticky="w", pady=(16, 8))
+
+        self.thumbnail_canvas = tk.Canvas(
+            preview,
+            height=172,
+            bg=UI_COLORS["preview_bg"],
+            highlightthickness=1,
+            highlightbackground=UI_COLORS["border"],
+            relief="flat",
+        )
+        self.thumbnail_canvas.grid(row=5, column=0, sticky="ew")
+        self.thumbnail_scrollbar = ttk.Scrollbar(
+            preview,
+            orient="horizontal",
+            command=self.thumbnail_canvas.xview,
+        )
+        self.thumbnail_scrollbar.grid(row=6, column=0, sticky="ew", pady=(4, 0))
+        self.thumbnail_canvas.configure(xscrollcommand=self.thumbnail_scrollbar.set)
+
+        self.thumbnail_frame = tk.Frame(
+            self.thumbnail_canvas,
+            bg=UI_COLORS["preview_bg"],
+            padx=8,
+            pady=8,
+        )
+        self.thumbnail_window = self.thumbnail_canvas.create_window(
+            (0, 0),
+            window=self.thumbnail_frame,
+            anchor="nw",
+        )
+        self.thumbnail_frame.bind("<Configure>", self._sync_thumbnail_scroll_region)
+        self.thumbnail_canvas.bind("<Configure>", self._resize_thumbnail_window)
+
     def add_labeled_entry(
         self,
         parent,
@@ -755,6 +791,7 @@ class ZineImposerUI:
         self.sheet_counter_var.set("No preview loaded")
         self.source_var.set(self.describe_source())
         self.status_var.set("Choose a PDF or image set, then preview the layout.")
+        self.rebuild_thumbnail_strip()
 
     def options_from_ui(self) -> ImpositionOptions:
         try:
@@ -789,6 +826,7 @@ class ZineImposerUI:
         self.preview_index = 0
         self.plan_text.delete("1.0", tk.END)
         self.plan_text.insert("1.0", "\n".join(format_plan_lines(self.result.plan, len(self.result.pages))))
+        self.rebuild_thumbnail_strip()
         self.update_preview_image()
         padded_note = ""
         if self.result.total_pages != len(self.result.pages):
@@ -802,12 +840,104 @@ class ZineImposerUI:
         if self.result is None or not self.result.sheets:
             self.preview_label.configure(image="", text="")
             self.sheet_counter_var.set("No preview loaded")
+            self.highlight_active_thumbnail()
             return
         sheet = self.result.sheets[self.preview_index]
         preview = render_preview_image(sheet, PREVIEW_MAX_SIZE)
         self.preview_photo = ImageTk.PhotoImage(preview)
         self.preview_label.configure(image=self.preview_photo)
         self.sheet_counter_var.set(f"Sheet side {self.preview_index + 1} of {len(self.result.sheets)}")
+        self.highlight_active_thumbnail()
+        self.scroll_active_thumbnail_into_view()
+
+    def rebuild_thumbnail_strip(self) -> None:
+        for child in self.thumbnail_frame.winfo_children():
+            child.destroy()
+        for button in self.thumbnail_buttons:
+            button.destroy()
+        self.thumbnail_buttons = []
+        self.thumbnail_photos = []
+
+        if self.result is None or not self.result.sheets:
+            empty = tk.Label(
+                self.thumbnail_frame,
+                text="Run a preview to populate the sheet strip.",
+                bg=UI_COLORS["preview_bg"],
+                fg=UI_COLORS["muted"],
+                padx=12,
+                pady=12,
+            )
+            empty.grid(row=0, column=0, sticky="w")
+            self.thumbnail_buttons = []
+            self.thumbnail_canvas.xview_moveto(0)
+            return
+
+        for index, sheet in enumerate(self.result.sheets):
+            thumb = render_preview_image(sheet, THUMBNAIL_SIZE)
+            photo = ImageTk.PhotoImage(thumb)
+            self.thumbnail_photos.append(photo)
+            button = tk.Button(
+                self.thumbnail_frame,
+                image=photo,
+                text=f"{index + 1}",
+                compound="top",
+                command=lambda idx=index: self.show_sheet(idx),
+                bg=UI_COLORS["panel_alt"],
+                fg=UI_COLORS["text"],
+                activebackground=UI_COLORS["input_bg"],
+                activeforeground=UI_COLORS["text"],
+                relief="flat",
+                bd=0,
+                highlightthickness=2,
+                highlightbackground=UI_COLORS["border"],
+                highlightcolor=UI_COLORS["accent"],
+                padx=8,
+                pady=8,
+                cursor="hand2",
+            )
+            button.grid(row=0, column=index, padx=(0, 10), sticky="n")
+            self.thumbnail_buttons.append(button)
+
+        self.highlight_active_thumbnail()
+        self.thumbnail_canvas.xview_moveto(0)
+
+    def highlight_active_thumbnail(self) -> None:
+        for index, button in enumerate(self.thumbnail_buttons):
+            is_active = index == self.preview_index and self.result is not None
+            button.configure(
+                bg=UI_COLORS["input_bg"] if is_active else UI_COLORS["panel_alt"],
+                highlightbackground=UI_COLORS["accent"] if is_active else UI_COLORS["border"],
+            )
+
+    def show_sheet(self, index: int) -> None:
+        if self.result is None or not self.result.sheets:
+            return
+        self.preview_index = index
+        self.update_preview_image()
+
+    def scroll_active_thumbnail_into_view(self) -> None:
+        if not self.thumbnail_buttons:
+            return
+        self.root.update_idletasks()
+        active = self.thumbnail_buttons[self.preview_index]
+        canvas_width = max(self.thumbnail_canvas.winfo_width(), 1)
+        frame_width = max(self.thumbnail_frame.winfo_width(), 1)
+        active_left = active.winfo_x()
+        active_right = active_left + active.winfo_width()
+        current_left = self.thumbnail_canvas.canvasx(0)
+        current_right = current_left + canvas_width
+
+        if active_left < current_left:
+            self.thumbnail_canvas.xview_moveto(active_left / frame_width)
+        elif active_right > current_right:
+            target = max(active_right - canvas_width, 0) / frame_width
+            self.thumbnail_canvas.xview_moveto(target)
+
+    def _sync_thumbnail_scroll_region(self, _event=None) -> None:
+        self.thumbnail_canvas.configure(scrollregion=self.thumbnail_canvas.bbox("all"))
+
+    def _resize_thumbnail_window(self, event) -> None:
+        self.thumbnail_canvas.itemconfigure(self.thumbnail_window, height=event.height)
 
     def show_previous_sheet(self) -> None:
         if self.result is None or not self.result.sheets:
